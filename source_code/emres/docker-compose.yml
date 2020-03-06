@@ -1,0 +1,35 @@
+version: "3.7"
+services:
+  front:
+    build:
+      context: .
+      target: front
+    command: yarn start
+    ports:
+      - 3001:3000
+    volumes:
+      - ./emres-front:/usr/src/app
+    restart: unless-stopped
+
+  server:
+    build:
+      context: .
+      target: server
+    command: rails s -b 0.0.0.0
+    tty: true
+    stdin_open: true
+    ports:
+      - 3000:3000
+    volumes:
+      - ./emres-server:/usr/src/app
+    restart: unless-stopped
+    depends_on:
+      - db
+
+  db:
+    image: postgres
+    env_file:
+      - ./.env
+    volumes:
+      - ~/.tmp/app/emres/db:/var/lib/postgresql/data
+    restart: unless-stopped

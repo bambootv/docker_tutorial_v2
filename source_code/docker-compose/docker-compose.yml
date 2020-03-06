@@ -1,0 +1,7 @@
+version: "3.7"
+services:
+  app:
+    build: .
+    command: ruby main.rb
+    volumes:
+      - .:/usr/src/app

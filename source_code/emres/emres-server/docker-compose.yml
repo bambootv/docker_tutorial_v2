@@ -1,0 +1,145 @@
+version: "3.5"
+services:
+  postgres:
+    image: postgres:9.6
+    restart: always
+    volumes:
+      - /data/emres-server:/var/lib/postgresql/data
+
+  redis:
+    image: redis:5.0.0-alpine
+    volumes:
+      - /data/emres-redis:/data
+    restart: always
+
+  sidekiq-staging:
+    image: emres-server
+    command: sidekiq
+    depends_on:
+      - postgres
+      - redis
+    restart: always
+    environment:
+      RAILS_ENV: staging
+      RACK_ENV: staging
+
+  sidekiq-production:
+    image: emres-server-production
+    command: sidekiq
+    depends_on:
+      - postgres
+      - redis
+    restart: always
+    environment:
+      RAILS_ENV: production
+      RACK_ENV: production
+
+  server-1:
+    image: emres-server
+    command: rails server -p 3000 -b '0.0.0.0'
+    ports:
+      - "3000"
+    depends_on:
+      - postgres
+      - sidekiq-staging
+    restart: unless-stopped
+    volumes:
+      - /data/emres-storage:/emres-server/public/uploads
+    environment:
+      RAILS_ENV: staging
+      RACK_ENV: staging
+
+  server-2:
+    image: emres-server
+    command: rails server -p 3000 -b '0.0.0.0'
+    ports:
+      - "3000"
+    depends_on:
+      - postgres
+      - sidekiq-staging
+    restart: unless-stopped
+    volumes:
+      - /data/emres-storage:/emres-server/public/uploads
+    environment:
+      RAILS_ENV: staging
+      RACK_ENV: staging
+
+  server-3:
+    image: emres-server-production
+    command: rails server -p 3000 -b '0.0.0.0'
+    ports:
+      - "3000"
+    depends_on:
+      - postgres
+      - sidekiq-production
+    restart: unless-stopped
+    volumes:
+      - /data/emres-storage-production:/emres-server/public/uploads
+    environment:
+      RAILS_ENV: production
+      RACK_ENV: production
+
+  server-4:
+    image: emres-server-production
+    command: rails server -p 3000 -b '0.0.0.0'
+    ports:
+      - "3000"
+    depends_on:
+      - postgres
+      - sidekiq-production
+    restart: unless-stopped
+    volumes:
+      - /data/emres-storage-production:/emres-server/public/uploads
+    environment:
+      RAILS_ENV: production
+      RACK_ENV: production
+
+  front-1:
+    image: emres-front
+    command: nginx -g 'daemon off;'
+    restart: unless-stopped
+    ports:
+      - "80"
+
+  front-2:
+    image: emres-front
+    command: nginx -g 'daemon off;'
+    restart: unless-stopped
+    ports:
+      - "80"
+
+  front-3:
+    image: emres-front-production
+    command: nginx -g 'daemon off;'
+    restart: unless-stopped
+    ports:
+      - "80"
+
+  front-4:
+    image: emres-front-production
+    command: nginx -g 'daemon off;'
+    restart: unless-stopped
+    ports:
+      - "80"
+
+  haproxy:
+    image: haproxy-socat
+    volumes:
+      - "./haproxy/haproxy.cfg:/usr/local/etc/haproxy/haproxy.cfg"
+      - "./haproxy/haproxy_set_server.sh:/bin/haproxy_set_server"
+    depends_on:
+      - server-1
+      - server-2
+      - server-3
+      - server-4
+      - front-1
+      - front-2
+      - front-3
+      - front-4
+    ports:
+      - "8870:8870"
+      - "8880:8880"
+      - "8890:8890"
+      - "8881:8881"
+      - "8891:8891"
+    restart: always
